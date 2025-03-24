@@ -38,7 +38,7 @@ def predict(smiles, model, device):
 # ✔️ Main NATS client
 async def run():
     nc = NATS()
-    await nc.connect("nats://localhost:4222")
+    await nc.connect("nats://localhost:4223")
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     model = MercurionMLP().to(device)
