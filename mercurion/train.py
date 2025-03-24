@@ -8,23 +8,25 @@ from mercurion.utils import calculate_pos_weights
 from mercurion.early_stopping import EarlyStopping
 
 
-def load_data(X_path='data/processed/X.npy', y_path='data/processed/y.npy', batch_size=64, val_split=0.2):
-    X = np.load(X_path)
-    y = np.load(y_path)
+def load_data(batch_size=64):
+    X_train = np.load('data/processed/X_train.npy')
+    y_train = np.load('data/processed/y_train.npy')
+    X_val = np.load('data/processed/X_val.npy')
+    y_val = np.load('data/processed/y_val.npy')
 
-    X_tensor = torch.tensor(X, dtype=torch.float32)
-    y_tensor = torch.tensor(y, dtype=torch.float32)
+    X_train_tensor = torch.tensor(X_train, dtype=torch.float32)
+    y_train_tensor = torch.tensor(y_train, dtype=torch.float32)
+    X_val_tensor = torch.tensor(X_val, dtype=torch.float32)
+    y_val_tensor = torch.tensor(y_val, dtype=torch.float32)
 
-    dataset = TensorDataset(X_tensor, y_tensor)
+    train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
+    val_dataset = TensorDataset(X_val_tensor, y_val_tensor)
 
-    val_size = int(len(dataset) * val_split)
-    train_size = len(dataset) - val_size
-    train_ds, val_ds = random_split(dataset, [train_size, val_size])
-
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_ds, batch_size=batch_size)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size)
 
     return train_loader, val_loader
+
 
 def train_model(epochs=20, lr=1e-3, device='cuda' if torch.cuda.is_available() else 'cpu'):
     print(f"Using device: {device}")
