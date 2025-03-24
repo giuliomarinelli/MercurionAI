@@ -1,4 +1,4 @@
-import torch.nn as nn
+from torch import nn
 
 class MercurionMLP(nn.Module):
     def __init__(self, input_dim=2048, hidden_dims=[512, 128], output_dim=12, dropout=0.3):
@@ -14,7 +14,7 @@ class MercurionMLP(nn.Module):
             nn.Dropout(dropout),
 
             nn.Linear(hidden_dims[1], output_dim)
-            # ⚠️ Nessuna Sigmoid qui → usiamo BCEWithLogitsLoss! <=> BINARY CROSSENTROPY CON pos_weight
+            # ⚠️ Nessuna Sigmoid qui → usiamo BCEWithLogitsLoss in fase di trainig! <=> BINARY CROSSENTROPY CON pos_weight
         )
 
     def forward(self, x):
