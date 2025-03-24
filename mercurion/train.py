@@ -5,6 +5,8 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset, random_split
 from mercurion.model import MercurionMLP
 from mercurion.utils import calculate_pos_weights
+from mercurion.early_stopping import EarlyStopping
+
 
 def load_data(X_path='data/processed/X.npy', y_path='data/processed/y.npy', batch_size=64, val_split=0.2):
     X = np.load(X_path)
@@ -33,8 +35,8 @@ def train_model(epochs=20, lr=1e-3, device='cuda' if torch.cuda.is_available() e
     criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
-    best_val_loss = float('inf')
-
+    early_stopper = EarlyStopping(patience=15, verbose=True)
+    
     for epoch in range(epochs):
         model.train()
         train_loss = 0
@@ -68,28 +70,30 @@ def train_model(epochs=20, lr=1e-3, device='cuda' if torch.cuda.is_available() e
         all_preds = torch.cat(all_preds).numpy()
         all_targets = torch.cat(all_targets).numpy()
 
-# Sigmoid per convertire logits in probabilità
+        # Sigmoid per convertire logits in probabilità
         all_probs = 1 / (1 + np.exp(-all_preds))
 
-# Binarizza per F1
+        # Binarizza per F1
         all_bin = (all_probs > 0.5).astype(int)
 
-# F1 score
+        # F1 score
         f1_micro = f1_score(all_targets, all_bin, average='micro', zero_division=0)
         f1_macro = f1_score(all_targets, all_bin, average='macro', zero_division=0)
 
-# ROC-AUC
+        # ROC-AUC
         try:
             roc_auc = roc_auc_score(all_targets, all_probs, average='macro')
         except ValueError:
             roc_auc = float('nan')  # nel caso in cui non ci siano esempi positivi
 
         print(f"Epoch {epoch+1}/{epochs} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f} | F1 micro: {f1_micro:.2%} | F1 macro: {f1_macro:.2%} | ROC-AUC: {roc_auc:.2%}")
+    
+        early_stopper(val_loss, model)
 
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            torch.save(model.state_dict(), 'outputs/models/best_model.pt')
-            print("✅ Modello salvato!")
+    
+        if early_stopper.early_stop:
+            print("🛑 Stopping early")
+            break
 
 if __name__ == "__main__":
-    train_model()
+    train_model(epochs=100)

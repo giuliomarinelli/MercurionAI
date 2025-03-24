@@ -6,13 +6,13 @@ class MercurionMLP(nn.Module):
 
         self.model = nn.Sequential(
             nn.Linear(input_dim, hidden_dims[0]),
+            nn.Dropout(dropout),
             nn.ReLU(),
             nn.Dropout(dropout),
-
             nn.Linear(hidden_dims[0], hidden_dims[1]),
+            nn.Dropout(dropout),
             nn.ReLU(),
             nn.Dropout(dropout),
-
             nn.Linear(hidden_dims[1], output_dim)
             # ⚠️ Nessuna Sigmoid qui → usiamo BCEWithLogitsLoss in fase di trainig! <=> BINARY CROSSENTROPY CON pos_weight
         )
