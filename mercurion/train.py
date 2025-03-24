@@ -1,11 +1,11 @@
 from sklearn.metrics import f1_score, roc_auc_score
 import numpy as np
 import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader, TensorDataset, random_split
+from torch.utils.data import DataLoader, TensorDataset
 from mercurion.model import MercurionMLP
-from mercurion.utils import calculate_pos_weights
 from mercurion.early_stopping import EarlyStopping
+from mercurion.focal_loss import FocalLoss
+
 
 
 def load_data(batch_size=64):
@@ -33,8 +33,7 @@ def train_model(epochs=20, lr=1e-3, device='cuda' if torch.cuda.is_available() e
     train_loader, val_loader = load_data()
 
     model = MercurionMLP().to(device)
-    pos_weight = calculate_pos_weights().to(device)
-    criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+    criterion = FocalLoss(alpha=0.75)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
     early_stopper = EarlyStopping(patience=15, verbose=True)
@@ -88,7 +87,23 @@ def train_model(epochs=20, lr=1e-3, device='cuda' if torch.cuda.is_available() e
         except ValueError:
             roc_auc = float('nan')  # nel caso in cui non ci siano esempi positivi
 
-        print(f"Epoch {epoch+1}/{epochs} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f} | F1 micro: {f1_micro:.2%} | F1 macro: {f1_macro:.2%} | ROC-AUC: {roc_auc:.2%}")
+        def find_best_threshold(y_true, y_probs):
+            thresholds = np.arange(0.1, 0.9, 0.05)
+            best_f1 = 0
+            best_thresh = 0.5
+            for t in thresholds:
+                y_pred = (y_probs > t).astype(int)
+                f1 = f1_score(y_true, y_pred, average='macro', zero_division=0)
+                if f1 > best_f1:
+                    best_f1 = f1
+                    best_thresh = t
+            return best_thresh, best_f1
+
+        best_thresh, best_f1_macro = find_best_threshold(all_targets, all_probs)
+        all_bin = (all_probs > best_thresh).astype(int)
+
+        print(f"Epoch {epoch+1}/{epochs} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f} | F1 micro: {f1_micro:.2%} | F1 macro: {f1_macro:.2%} | ROC-AUC: {roc_auc:.2%} | Best Threshold: {best_thresh:.2f}")
+
     
         early_stopper(val_loss, model)
 
