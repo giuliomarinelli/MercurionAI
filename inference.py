@@ -7,6 +7,9 @@ from mercurion.labels import tox21_labels
 from rdkit import Chem
 from rdkit.Chem.rdFingerprintGenerator import GetMorganGenerator
 import json
+from schemas.schemas import InferenceRequest
+from pydantic import ValidationError
+
 
 # ✔️ Label e indice: definiti una sola volta, in ordine
 ALL_LABELS = tox21_labels
@@ -46,10 +49,15 @@ async def run():
     model.eval()
 
     async def message_handler(msg):
-        data = json.loads(msg.data.decode())
-        smiles = data.get('smiles')
-        result = predict(smiles, model, device)
-        await msg.respond(json.dumps(result).encode())
+        try:
+            req = InferenceRequest.parse_raw(msg.data.decode())
+        except ValidationError as e:
+            await msg.respond(json.dumps({"error": f"Invalid request: {e.errors()}"}).encode())
+            return
+
+        # Ora puoi usare req.smiles e req.accessToken
+        result = predict(req.smiles, model, device)
+
 
     await nc.subscribe("inference.smiles", cb=message_handler)
     print("✅ Microservizio in ascolto su 'inference.smiles'...")
