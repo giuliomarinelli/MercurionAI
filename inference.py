@@ -9,12 +9,25 @@ from rdkit.Chem.rdFingerprintGenerator import GetMorganGenerator
 import json
 from schemas.schemas import InferenceRequest
 from pydantic import ValidationError
+from jose import jwt, JWTError
 
 
 # ✔️ Label e indice: definiti una sola volta, in ordine
 ALL_LABELS = tox21_labels
 TOP4_LABELS = ['SR-ATAD5', 'NR-AhR', 'SR-MMP', 'SR-p53']
 TOP4_INDICES = [ALL_LABELS.index(label) for label in TOP4_LABELS]
+
+with open("public.pem", "r") as f:
+    PUBLIC_KEY = f.read()
+
+ALGORITHM = "RS256"
+
+def verify_jwt(token: str):
+    try:
+        payload = jwt.decode(token, PUBLIC_KEY, algorithms=[ALGORITHM])
+        return payload  # Puoi anche restituire solo alcune claim se vuoi
+    except JWTError as e:
+        return None
 
 # ✔️ Preprocessing SMILES → fingerprint
 def smiles_to_fp(smiles):
@@ -55,8 +68,15 @@ async def run():
             await msg.respond(json.dumps({"error": f"Invalid request: {e.errors()}"}).encode())
             return
 
-        # Ora puoi usare req.smiles e req.accessToken
+        # 🔐 Validazione token
+        user_payload = verify_jwt(req.accessToken)
+        if not user_payload:
+            await msg.respond(json.dumps({"error": "Invalid or expired access token"}).encode())
+            return
+
         result = predict(req.smiles, model, device)
+        await msg.respond(json.dumps(result).encode())
+
 
 
     await nc.subscribe("inference.smiles", cb=message_handler)

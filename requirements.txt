@@ -1,3 +1,4 @@
+annotated-types==0.7.0
 asyncio==3.4.3
 contourpy==1.1.1
 cycler==0.12.1
@@ -20,6 +21,8 @@ packaging==24.2
 pandas==2.0.3
 pillow==10.4.0
 pyasn1==0.4.8
+pydantic==2.10.6
+pydantic_core==2.27.2
 pyparsing==3.1.4
 python-dateutil==2.9.0.post0
 python-jose==3.4.0
